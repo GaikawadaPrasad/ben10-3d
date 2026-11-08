@@ -263,18 +263,19 @@ def build_pro_ultimatrix():
         created_objects.append(strap)
 
     # ---------------------------------------------------------------------
-    # 5. Glowing Power Circuit Inlays (Recessed channels)
+    # 5. Glowing Power Circuit Inlays (Running down forearm towards wrist)
     # ---------------------------------------------------------------------
     for side in [-1, 1]:
         bpy.ops.mesh.primitive_cube_add(
             size=1.0,
-            location=(side * 0.82, -0.3, 1.10),
-            scale=(0.04, 2.6, 0.03),
-            rotation=(0, side * math.radians(2), 0)
+            location=(side * 0.42, 0.92, 1.06),
+            scale=(0.045, 1.15, 0.035),
+            rotation=(0, 0, side * math.radians(1.5))
         )
         circuit = bpy.context.active_object
         circuit.name = f"Ultimatrix_Circuit_{'R' if side > 0 else 'L'}"
         apply_mat(circuit, mat_omni_glow)
+        add_bevel_and_smooth(circuit, width=0.006, segments=2)
         created_objects.append(circuit)
 
     # ---------------------------------------------------------------------
@@ -460,15 +461,7 @@ def build_pro_ultimatrix():
         add_bevel_and_smooth(o, width=0.006, segments=2)
         created_objects.append(o)
 
-    # Protective Glass Dome Lens over Dial
-    bpy.ops.mesh.primitive_cylinder_add(
-        radius=0.81, depth=0.02, vertices=48,
-        location=(0, -0.1, 1.52)
-    )
-    lens = bpy.context.active_object
-    lens.name = "Ultimatrix_DialLens"
-    apply_mat(lens, mat_glass)
-    created_objects.append(lens)
+    # (Lens omitted for clean 3D print and solid-mode visibility of the emblem)
 
     # ---------------------------------------------------------------------
     # 10. Studio Lighting & Viewport Configuration
@@ -498,15 +491,15 @@ def setup_environment(col):
     accent.data.energy = 40.0
     accent.data.color = (0.2, 1.0, 0.3)
 
-    # Cinematic Camera Framing with Target Tracking
+    # Cinematic Camera Framing with Target Tracking (Wide beauty shot)
     empty = bpy.data.objects.new("Cam_Target", None)
     col.objects.link(empty)
-    empty.location = (0, -0.2, 1.1)
+    empty.location = (0, -0.2, 0.9)
 
-    bpy.ops.object.camera_add(location=(3.8, -4.2, 3.6))
+    bpy.ops.object.camera_add(location=(4.4, -4.6, 5.6))
     cam = bpy.context.active_object
     cam.name = "Ultimatrix_StudioCamera"
-    cam.data.lens = 50
+    cam.data.lens = 40 # Framing full prop from elbow to wrist
     bpy.context.scene.camera = cam
 
     track = cam.constraints.new(type='TRACK_TO')

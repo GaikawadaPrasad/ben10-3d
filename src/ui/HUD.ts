@@ -1,5 +1,6 @@
 import { SoundEngine } from '../audio/SoundEngine';
 import { UltimatrixState } from '../core/UltimatrixState';
+import { ALIEN_ART } from '../core/alienArt';
 import type { UltimatrixStateSnapshot } from '../types';
 
 export class HUD {
@@ -10,6 +11,7 @@ export class HUD {
   private modeBadgeEl!: HTMLElement;
   private hintTextEl!: HTMLElement;
   private alienCardEl!: HTMLElement;
+  private alienPortraitEl!: HTMLElement;
   private alienNameEl!: HTMLElement;
   private alienSpeciesEl!: HTMLElement;
   private alienPlanetEl!: HTMLElement;
@@ -55,26 +57,41 @@ export class HUD {
         <!-- Center Screen Flare / Shockwave for Transformations -->
         <div id="transform-flash" class="transform-flash"></div>
 
-        <!-- Sleek Floating Alien Info Card (Appears after transformation) -->
+        <!-- Sleek Floating Alien Info Card (Appears after transformation with full image) -->
         <aside id="alien-card" class="alien-card card-hidden">
           <div class="card-accent-line"></div>
+          
           <div class="card-header">
             <span class="dna-code">GENETIC TELEMETRY</span>
             <span id="alien-tag" class="alien-tag">STANDARD</span>
           </div>
+
+          <!-- Alien Holographic Portrait Display -->
+          <div class="alien-portrait-container">
+            <div class="corner-bracket top-left"></div>
+            <div class="corner-bracket top-right"></div>
+            <div class="corner-bracket bottom-left"></div>
+            <div class="corner-bracket bottom-right"></div>
+            <div class="holo-scanline"></div>
+            <div id="alien-portrait" class="alien-portrait"></div>
+          </div>
+
           <h2 id="alien-name" class="alien-title">Swampfire</h2>
+          
           <div class="alien-meta">
             <div><span class="meta-label">SPECIES:</span> <span id="alien-species">Methanosian</span></div>
             <div><span class="meta-label">PLANET:</span> <span id="alien-planet">Methanos</span></div>
           </div>
+          
           <p id="alien-desc" class="alien-desc"></p>
+          
           <div class="abilities-section">
-            <div class="meta-label">SPECIAL ABILITIES:</div>
+            <div class="meta-label">SPECIAL COMBAT POWERS:</div>
             <ul id="alien-abilities" class="abilities-list"></ul>
           </div>
         </aside>
 
-        <!-- Dynamic Contextual Interaction Prompt at Bottom (No Cluttered 2D Buttons) -->
+        <!-- Dynamic Contextual Interaction Prompt at Bottom -->
         <footer class="hud-footer-minimal">
           <div id="hud-hint" class="hud-hint-pill">
             <span class="hint-pulse"></span>
@@ -88,6 +105,7 @@ export class HUD {
     this.modeBadgeEl = this.root.querySelector('#mode-badge') as HTMLElement;
     this.hintTextEl = this.root.querySelector('#hint-text') as HTMLElement;
     this.alienCardEl = this.root.querySelector('#alien-card') as HTMLElement;
+    this.alienPortraitEl = this.root.querySelector('#alien-portrait') as HTMLElement;
     this.alienNameEl = this.root.querySelector('#alien-name') as HTMLElement;
     this.alienSpeciesEl = this.root.querySelector('#alien-species') as HTMLElement;
     this.alienPlanetEl = this.root.querySelector('#alien-planet') as HTMLElement;
@@ -194,6 +212,12 @@ export class HUD {
 
   private updateAlienCard(alien: UltimatrixStateSnapshot['selectedAlien'], isUltimate: boolean): void {
     const alienTagEl = this.root.querySelector('#alien-tag') as HTMLElement;
+    const art = ALIEN_ART[alien.id];
+
+    // Inject SVG portrait illustration
+    if (art && this.alienPortraitEl) {
+      this.alienPortraitEl.innerHTML = isUltimate ? art.ultimateSvg : art.normalSvg;
+    }
 
     if (isUltimate) {
       this.alienCardEl.classList.add('card-ultimate');
