@@ -9,7 +9,7 @@ export class UltimatrixMesh {
 
   // Movable / animatable parts
   public coreGroup: THREE.Group;
-  public dialRing: THREE.Group;
+  public dialRing!: THREE.Group;
   public spikes: THREE.Mesh[] = [];
   public corePointLight: THREE.PointLight;
 
