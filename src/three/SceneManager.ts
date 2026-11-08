@@ -25,6 +25,7 @@ export class SceneManager {
 
   private shakeIntensity: number = 0;
   private targetCameraPos: THREE.Vector3;
+  private targetControlsTarget: THREE.Vector3;
 
   constructor(canvas: HTMLCanvasElement, state: UltimatrixState, soundEngine: SoundEngine) {
     this.canvas = canvas;
@@ -44,6 +45,7 @@ export class SceneManager {
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
     this.camera.position.set(2.8, 3.4, 3.8);
     this.targetCameraPos = this.camera.position.clone();
+    this.targetControlsTarget = new THREE.Vector3(0, 0.35, 0);
 
     // 3. Renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -229,11 +231,19 @@ export class SceneManager {
       this.bloomPass.strength = 0.85;
     }
 
-    // Camera framing focus
+    // Camera framing focus and center target
     if (snapshot.mode === 'ACTIVE_SELECTION') {
-      this.targetCameraPos.set(2.2, 2.9, 3.0);
-    } else if (snapshot.mode === 'TRANSFORMED' || snapshot.mode === 'ULTIMATE_MODE') {
+      this.targetCameraPos.set(2.0, 3.4, 4.6);
+      this.targetControlsTarget.set(0, 0.80, 0);
+    } else if (snapshot.mode === 'ULTIMATE_MODE') {
+      this.targetCameraPos.set(2.6, 3.5, 4.5);
+      this.targetControlsTarget.set(0, 0.70, 0);
+    } else if (snapshot.mode === 'TRANSFORMED') {
+      this.targetCameraPos.set(2.8, 3.4, 4.0);
+      this.targetControlsTarget.set(0, 0.45, 0);
+    } else {
       this.targetCameraPos.set(2.8, 3.4, 3.8);
+      this.targetControlsTarget.set(0, 0.35, 0);
     }
   }
 
@@ -245,8 +255,9 @@ export class SceneManager {
     // 1. Update 3D mesh components and animations
     this.ultimatrix.update(delta);
 
-    // 2. Camera smooth framing interpolation
+    // 2. Camera smooth framing and target interpolation
     this.camera.position.lerp(this.targetCameraPos, Math.min(1, delta * 3.0));
+    this.controls.target.lerp(this.targetControlsTarget, Math.min(1, delta * 3.0));
 
     // 3. Camera shake decay
     if (this.shakeIntensity > 0) {

@@ -1,12 +1,16 @@
-// High-fidelity SVG artwork for all 6 aliens and their Ultimate forms
+// High-fidelity artwork and assets for all 6 aliens and their Ultimate forms
 
 export interface AlienArtData {
   normalSvg: string;
   ultimateSvg: string;
+  image: string;
+  ultimateImage: string;
 }
 
 export const ALIEN_ART: Record<string, AlienArtData> = {
   swampfire: {
+    image: '/aliens/swampfire.png',
+    ultimateImage: '/aliens/swampfire-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="swamp-glow" cx="50%" cy="50%" r="50%">
@@ -76,6 +80,8 @@ export const ALIEN_ART: Record<string, AlienArtData> = {
     </svg>`
   },
   humungousaur: {
+    image: '/aliens/humungousaur.png',
+    ultimateImage: '/aliens/humungousaur-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="hum-glow" cx="50%" cy="50%" r="50%">
@@ -156,6 +162,8 @@ export const ALIEN_ART: Record<string, AlienArtData> = {
     </svg>`
   },
   'echo-echo': {
+    image: '/aliens/echo-echo.png',
+    ultimateImage: '/aliens/echo-echo-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="echo-glow" cx="50%" cy="50%" r="50%">
@@ -219,6 +227,8 @@ export const ALIEN_ART: Record<string, AlienArtData> = {
     </svg>`
   },
   'big-chill': {
+    image: '/aliens/big-chill.png',
+    ultimateImage: '/aliens/big-chill-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="chill-glow" cx="50%" cy="50%" r="50%">
@@ -274,6 +284,8 @@ export const ALIEN_ART: Record<string, AlienArtData> = {
     </svg>`
   },
   cannonbolt: {
+    image: '/aliens/cannonbolt.png',
+    ultimateImage: '/aliens/cannonbolt-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="bolt-glow" cx="50%" cy="50%" r="50%">
@@ -330,6 +342,8 @@ export const ALIEN_ART: Record<string, AlienArtData> = {
     </svg>`
   },
   spidermonkey: {
+    image: '/aliens/spidermonkey.png',
+    ultimateImage: '/aliens/spidermonkey-ultimate.png',
     normalSvg: `<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="spider-glow" cx="50%" cy="50%" r="50%">

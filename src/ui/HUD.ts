@@ -214,9 +214,15 @@ export class HUD {
     const alienTagEl = this.root.querySelector('#alien-tag') as HTMLElement;
     const art = ALIEN_ART[alien.id];
 
-    // Inject SVG portrait illustration
-    if (art && this.alienPortraitEl) {
-      this.alienPortraitEl.innerHTML = isUltimate ? art.ultimateSvg : art.normalSvg;
+    // Display downloaded real alien artwork in holographic portrait container
+    if (this.alienPortraitEl) {
+      if (art && art.image) {
+        const imgPath = isUltimate ? art.ultimateImage : art.image;
+        const displayName = isUltimate ? alien.ultimateName : alien.name;
+        this.alienPortraitEl.innerHTML = `<img src="${imgPath}" alt="${displayName}" class="alien-photo" loading="eager" />`;
+      } else if (art) {
+        this.alienPortraitEl.innerHTML = isUltimate ? art.ultimateSvg : art.normalSvg;
+      }
     }
 
     if (isUltimate) {

@@ -50,8 +50,8 @@ export class UltimatrixMesh {
     this.corePointLight.position.set(0, 0.8, 0);
     this.group.add(this.corePointLight);
 
-    // 6. Hologram projection
-    this.group.add(this.hologram.group);
+    // 6. Hologram projection attached to elevating core
+    this.coreGroup.add(this.hologram.group);
   }
 
   private buildGauntletBody(): void {
@@ -157,6 +157,13 @@ export class UltimatrixMesh {
     this.dialDisplayMesh = new THREE.Mesh(displayGeo, displayMat);
     this.dialDisplayMesh.position.set(0, 0.265, 0);
     this.dialRing.add(this.dialDisplayMesh);
+
+    // Invisible hit collider encompassing dial and hologram for responsive clicking
+    const hitGeo = new THREE.CylinderGeometry(1.35, 1.35, 2.0, 16);
+    const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+    const clickProxy = new THREE.Mesh(hitGeo, hitMat);
+    clickProxy.position.set(0, 0.9, 0);
+    this.coreGroup.add(clickProxy);
 
     // Hourglass / Interlocked Triangles 3D Emblem Group
     this.hourglassGroup = new THREE.Group();

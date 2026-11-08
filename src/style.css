@@ -299,15 +299,18 @@ html, body, #app {
   z-index: 2;
 }
 
-.alien-portrait svg {
-  max-width: 100%;
+.alien-portrait svg,
+.alien-portrait .alien-photo {
+  max-width: 90%;
   max-height: 165px;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 102, 0.6));
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 102, 0.7));
   animation: portrait-breathe 3s infinite ease-in-out;
 }
 
-.alien-card.card-ultimate .alien-portrait svg {
-  filter: drop-shadow(0 0 12px rgba(255, 17, 34, 0.7));
+.alien-card.card-ultimate .alien-portrait svg,
+.alien-card.card-ultimate .alien-portrait .alien-photo {
+  filter: drop-shadow(0 0 14px rgba(255, 17, 34, 0.85));
 }
 
 @keyframes portrait-breathe {
