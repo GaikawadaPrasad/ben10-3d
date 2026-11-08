@@ -81,4 +81,51 @@ describe('UltimatrixState Machine', () => {
     // No more calls after unsubscribe
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it('runs 6s timer for normal form and transitions to red COOLDOWN, then reverts to STANDBY after 2s', () => {
+    vi.useFakeTimers();
+    state.toggleActivation();
+    state.slamDial();
+
+    expect(state.getSnapshot().mode).toBe('TRANSFORMED');
+    expect(state.getSnapshot().timeRemaining).toBe(6.0);
+
+    // Fast-forward 6 seconds
+    vi.advanceTimersByTime(6000);
+
+    // Should now be in red COOLDOWN
+    expect(state.getSnapshot().mode).toBe('COOLDOWN');
+    expect(state.getSnapshot().timeRemaining).toBe(2.0);
+
+    // Fast-forward 2 seconds
+    vi.advanceTimersByTime(2000);
+
+    // Should now be back in STANDBY, ready to transform again
+    expect(state.getSnapshot().mode).toBe('STANDBY');
+    vi.useRealTimers();
+  });
+
+  it('runs 4s timer for ultimate form and transitions to red COOLDOWN, then reverts to STANDBY after 2s', () => {
+    vi.useFakeTimers();
+    state.toggleActivation();
+    state.slamDial();
+    state.toggleUltimate();
+
+    expect(state.getSnapshot().mode).toBe('ULTIMATE_MODE');
+    expect(state.getSnapshot().timeRemaining).toBe(4.0);
+
+    // Fast-forward 4 seconds
+    vi.advanceTimersByTime(4000);
+
+    // Should now be in red COOLDOWN
+    expect(state.getSnapshot().mode).toBe('COOLDOWN');
+    expect(state.getSnapshot().timeRemaining).toBe(2.0);
+
+    // Fast-forward 2 seconds
+    vi.advanceTimersByTime(2000);
+
+    // Should now be back in STANDBY
+    expect(state.getSnapshot().mode).toBe('STANDBY');
+    vi.useRealTimers();
+  });
 });

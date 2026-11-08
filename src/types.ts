@@ -27,6 +27,8 @@ export interface UltimatrixStateSnapshot {
   selectedAlien: AlienData;
   isUltimate: boolean;
   cooldownPercent: number;
+  timeRemaining: number;
+  totalDuration: number;
   audioEnabled: boolean;
 }
 

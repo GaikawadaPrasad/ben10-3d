@@ -1,7 +1,7 @@
 import { SoundEngine } from '../audio/SoundEngine';
 import { UltimatrixState } from '../core/UltimatrixState';
 import { ALIEN_ART } from '../core/alienArt';
-import type { UltimatrixStateSnapshot } from '../types';
+import type { UltimatrixMode, UltimatrixStateSnapshot } from '../types';
 
 export class HUD {
   private root: HTMLElement;
@@ -20,6 +20,10 @@ export class HUD {
   private audioBtn!: HTMLButtonElement;
   private fullscreenBtn!: HTMLButtonElement;
   private flashEl!: HTMLElement;
+  private dnaTimerEl!: HTMLElement;
+  private timerBarFillEl!: HTMLElement;
+
+  private prevMode: UltimatrixMode = 'STANDBY';
 
   constructor(root: HTMLElement, state: UltimatrixState, soundEngine: SoundEngine) {
     this.root = root;
@@ -57,13 +61,21 @@ export class HUD {
         <!-- Center Screen Flare / Shockwave for Transformations -->
         <div id="transform-flash" class="transform-flash"></div>
 
-        <!-- Sleek Floating Alien Info Card (Appears after transformation with full image) -->
+        <!-- Sleek Floating Alien Info Card (Appears after transformation with full image & countdown) -->
         <aside id="alien-card" class="alien-card card-hidden">
           <div class="card-accent-line"></div>
           
           <div class="card-header">
             <span class="dna-code">GENETIC TELEMETRY</span>
-            <span id="alien-tag" class="alien-tag">STANDARD</span>
+            <div class="card-header-meta">
+              <span id="dna-timer" class="dna-timer">⏱️ 6.0s</span>
+              <span id="alien-tag" class="alien-tag">STANDARD</span>
+            </div>
+          </div>
+
+          <!-- Active Transformation Countdown Bar -->
+          <div class="timer-bar-track">
+            <div id="timer-bar-fill" class="timer-bar-fill"></div>
           </div>
 
           <!-- Alien Holographic Portrait Display -->
@@ -114,6 +126,8 @@ export class HUD {
     this.audioBtn = this.root.querySelector('#btn-audio') as HTMLButtonElement;
     this.fullscreenBtn = this.root.querySelector('#btn-fullscreen') as HTMLButtonElement;
     this.flashEl = this.root.querySelector('#transform-flash') as HTMLElement;
+    this.dnaTimerEl = this.root.querySelector('#dna-timer') as HTMLElement;
+    this.timerBarFillEl = this.root.querySelector('#timer-bar-fill') as HTMLElement;
   }
 
   private bindEvents(): void {
@@ -145,8 +159,6 @@ export class HUD {
       } else if (e.code === 'KeyU') {
         const snap = this.state.getSnapshot();
         if (snap.mode === 'TRANSFORMED') {
-          this.soundEngine.playUltimateEvolve();
-          this.triggerFlash('red');
           this.state.toggleUltimate();
         }
       } else if (e.code === 'Space') {
@@ -156,15 +168,10 @@ export class HUD {
           this.soundEngine.playPopUp();
           this.state.toggleActivation();
         } else if (snap.mode === 'ACTIVE_SELECTION') {
-          this.soundEngine.playSlam();
-          this.soundEngine.playTransform();
-          this.triggerFlash('green');
           this.state.slamDial();
         } else if (snap.mode === 'TRANSFORMED') {
-          this.soundEngine.playUltimateEvolve();
-          this.triggerFlash('red');
           this.state.toggleUltimate();
-        } else {
+        } else if (snap.mode === 'ULTIMATE_MODE') {
           this.soundEngine.playSlam();
           this.state.detransform();
         }
@@ -181,13 +188,47 @@ export class HUD {
   }
 
   private onStateChange(snapshot: UltimatrixStateSnapshot): void {
-    const { mode, selectedAlien, isUltimate } = snapshot;
+    const { mode, selectedAlien, isUltimate, timeRemaining, cooldownPercent } = snapshot;
+
+    // Handle audio & visual transitions on mode changes
+    if (mode !== this.prevMode) {
+      if (mode === 'TRANSFORMED') {
+        this.soundEngine.playSlam();
+        this.soundEngine.playTransform();
+        this.triggerFlash('green');
+        this.updateAlienCard(selectedAlien, false);
+      } else if (mode === 'ULTIMATE_MODE') {
+        this.soundEngine.playUltimateEvolve();
+        this.triggerFlash('red');
+        this.updateAlienCard(selectedAlien, true);
+      } else if (mode === 'COOLDOWN') {
+        this.soundEngine.playTimeout();
+        this.triggerFlash('red');
+      } else if (mode === 'STANDBY' && this.prevMode === 'COOLDOWN') {
+        this.soundEngine.playPopUp();
+        this.triggerFlash('green');
+      }
+      this.prevMode = mode;
+    }
 
     // 1. Update Mode Badge
     this.modeBadgeEl.className = `mode-badge badge-${mode.toLowerCase()}`;
     this.modeBadgeEl.textContent = isUltimate ? 'ULTIMATE FORM' : mode.replace('_', ' ');
 
-    // 2. Contextual Interaction Prompt
+    // 2. Update Countdown Timer Badge and Progress Bar
+    if (this.dnaTimerEl && (mode === 'TRANSFORMED' || mode === 'ULTIMATE_MODE')) {
+      this.dnaTimerEl.textContent = `⏱️ ${timeRemaining.toFixed(1)}s`;
+      if (timeRemaining <= 1.5) {
+        this.dnaTimerEl.classList.add('timer-warning');
+      } else {
+        this.dnaTimerEl.classList.remove('timer-warning');
+      }
+    }
+    if (this.timerBarFillEl) {
+      this.timerBarFillEl.style.width = `${Math.max(0, Math.min(100, cooldownPercent))}%`;
+    }
+
+    // 3. Contextual Interaction Prompt
     if (mode === 'STANDBY') {
       this.hintTextEl.innerHTML = `⚡ <strong>CLICK WATCH</strong> TO POP UP CORE • SCROLL MOUSE WHEEL TO CYCLE ALIENS`;
       this.alienCardEl.classList.add('card-hidden');
@@ -195,17 +236,13 @@ export class HUD {
       this.hintTextEl.innerHTML = `🔄 <strong>SCROLL MOUSE WHEEL</strong> TO ROTATE DIAL • ⚡ <strong>CLICK WATCH</strong> TO TRANSFORM INTO <strong>${selectedAlien.name.toUpperCase()}</strong>`;
       this.alienCardEl.classList.add('card-hidden');
     } else if (mode === 'TRANSFORMED') {
-      this.hintTextEl.innerHTML = `💥 <strong>TRANSFORMED!</strong> CLICK WATCH TO EVOLVE TO <strong>ULTIMATE</strong> • PRESS [R] TO REVERT`;
+      this.hintTextEl.innerHTML = `💥 <strong>${selectedAlien.name.toUpperCase()}</strong> • TIME: <strong>${timeRemaining.toFixed(1)}s</strong> • CLICK WATCH TO EVOLVE TO <strong>ULTIMATE</strong>`;
       this.alienCardEl.classList.remove('card-hidden');
-      this.updateAlienCard(selectedAlien, false);
-      this.triggerFlash('green');
     } else if (mode === 'ULTIMATE_MODE') {
-      this.hintTextEl.innerHTML = `🔥 <strong>${selectedAlien.ultimateName.toUpperCase()} ACTIVE!</strong> CLICK WATCH OR PRESS [R] TO REVERT`;
+      this.hintTextEl.innerHTML = `🔥 <strong>${selectedAlien.ultimateName.toUpperCase()}</strong> • TIME: <strong>${timeRemaining.toFixed(1)}s</strong> • RETRACTING SPIKES SOON`;
       this.alienCardEl.classList.remove('card-hidden');
-      this.updateAlienCard(selectedAlien, true);
-      this.triggerFlash('red');
     } else if (mode === 'COOLDOWN') {
-      this.hintTextEl.innerHTML = `⚠️ <strong>RECHARGING...</strong> (${Math.round(snapshot.cooldownPercent)}%)`;
+      this.hintTextEl.innerHTML = `🔴 <strong>RECHARGING GALVAN MATRIX...</strong> (${timeRemaining.toFixed(1)}s) • TURNING GREEN SHORTLY`;
       this.alienCardEl.classList.add('card-hidden');
     }
   }

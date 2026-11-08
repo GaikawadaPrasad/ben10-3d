@@ -6,9 +6,11 @@ export class UltimatrixState {
   private selectedAlienIndex: number = 0;
   private isUltimate: boolean = false;
   private cooldownPercent: number = 0;
+  private timeRemaining: number = 0;
+  private totalDuration: number = 0;
   private audioEnabled: boolean = true;
   private listeners: Set<StateChangeCallback> = new Set();
-  private cooldownTimer: number | null = null;
+  private timerId: ReturnType<typeof setInterval> | null = null;
 
   public getSnapshot(): UltimatrixStateSnapshot {
     return {
@@ -17,6 +19,8 @@ export class UltimatrixState {
       selectedAlien: ALIENS[this.selectedAlienIndex],
       isUltimate: this.isUltimate,
       cooldownPercent: this.cooldownPercent,
+      timeRemaining: this.timeRemaining,
+      totalDuration: this.totalDuration,
       audioEnabled: this.audioEnabled
     };
   }
@@ -34,14 +38,44 @@ export class UltimatrixState {
     }
   }
 
+  private clearTimer(): void {
+    if (this.timerId !== null) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+  }
+
+  private startTimer(seconds: number, onComplete: () => void): void {
+    this.clearTimer();
+    this.totalDuration = seconds;
+    this.timeRemaining = seconds;
+    this.cooldownPercent = 100;
+
+    const intervalMs = 100;
+    this.timerId = setInterval(() => {
+      this.timeRemaining = Math.max(0, +(this.timeRemaining - 0.1).toFixed(1));
+      if (this.totalDuration > 0) {
+        this.cooldownPercent = (this.timeRemaining / this.totalDuration) * 100;
+      }
+      this.notify();
+
+      if (this.timeRemaining <= 0) {
+        this.clearTimer();
+        onComplete();
+      }
+    }, intervalMs);
+  }
+
   public toggleActivation(): void {
-    if (this.mode === 'COOLDOWN') return;
+    if (this.mode === 'COOLDOWN') return; // Cannot activate while recharging
 
     if (this.mode === 'STANDBY') {
       this.mode = 'ACTIVE_SELECTION';
       this.isUltimate = false;
+      this.clearTimer();
     } else if (this.mode === 'ACTIVE_SELECTION') {
       this.mode = 'STANDBY';
+      this.clearTimer();
     } else if (this.mode === 'TRANSFORMED' || this.mode === 'ULTIMATE_MODE') {
       this.detransform();
       return;
@@ -62,6 +96,7 @@ export class UltimatrixState {
   }
 
   public selectAlien(index: number): void {
+    if (this.mode === 'COOLDOWN') return;
     if (index >= 0 && index < ALIENS.length) {
       this.selectedAlienIndex = index;
       this.notify();
@@ -70,65 +105,70 @@ export class UltimatrixState {
 
   public slamDial(): void {
     if (this.mode === 'ACTIVE_SELECTION') {
+      // Normal transformation lasts 6 seconds
       this.mode = 'TRANSFORMED';
       this.isUltimate = false;
       this.notify();
+      this.startTimer(6.0, () => {
+        this.triggerTimeout(2.0);
+      });
     } else if (this.mode === 'TRANSFORMED') {
-      // Slamming while transformed triggers ultimate evolution!
+      // Evolving to Ultimate lasts 4 seconds
       this.toggleUltimate();
     } else if (this.mode === 'ULTIMATE_MODE') {
-      // Revert from ultimate
       this.detransform();
     } else if (this.mode === 'STANDBY') {
-      // Pop up core first
       this.toggleActivation();
     }
   }
 
   public toggleUltimate(): void {
     if (this.mode === 'TRANSFORMED') {
+      // Ultimate form lasts 4 seconds
       this.mode = 'ULTIMATE_MODE';
       this.isUltimate = true;
       this.notify();
+      this.startTimer(4.0, () => {
+        this.triggerTimeout(2.0);
+      });
     } else if (this.mode === 'ULTIMATE_MODE') {
+      // Revert to normal transformed (resets normal 6s timer)
       this.mode = 'TRANSFORMED';
       this.isUltimate = false;
       this.notify();
+      this.startTimer(6.0, () => {
+        this.triggerTimeout(2.0);
+      });
     }
   }
 
   public detransform(): void {
     if (this.mode === 'TRANSFORMED' || this.mode === 'ULTIMATE_MODE') {
+      this.clearTimer();
       this.mode = 'STANDBY';
       this.isUltimate = false;
+      this.timeRemaining = 0;
+      this.totalDuration = 0;
+      this.cooldownPercent = 0;
       this.notify();
     }
   }
 
-  public triggerTimeout(): void {
+  public triggerTimeout(cooldownSeconds: number = 2.0): void {
+    this.clearTimer();
     this.mode = 'COOLDOWN';
     this.isUltimate = false;
-    this.cooldownPercent = 100;
     this.notify();
 
-    if (this.cooldownTimer !== null) {
-      clearInterval(this.cooldownTimer);
-    }
-
-    const intervalTime = 100; // ms
-    const step = 2; // reduces cooldown in 5s
-    this.cooldownTimer = window.setInterval(() => {
-      this.cooldownPercent -= step;
-      if (this.cooldownPercent <= 0) {
-        this.cooldownPercent = 0;
-        this.mode = 'STANDBY';
-        if (this.cooldownTimer !== null) {
-          clearInterval(this.cooldownTimer);
-          this.cooldownTimer = null;
-        }
-      }
+    // Red Cooldown lasts 2 seconds, then automatically returns to green STANDBY
+    this.startTimer(cooldownSeconds, () => {
+      this.mode = 'STANDBY';
+      this.isUltimate = false;
+      this.timeRemaining = 0;
+      this.totalDuration = 0;
+      this.cooldownPercent = 0;
       this.notify();
-    }, intervalTime);
+    });
   }
 
   public toggleAudio(): boolean {
