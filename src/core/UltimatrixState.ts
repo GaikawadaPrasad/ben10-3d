@@ -108,10 +108,10 @@ export class UltimatrixState {
       // Normal transformation lasts 6 seconds
       this.mode = 'TRANSFORMED';
       this.isUltimate = false;
-      this.notify();
       this.startTimer(6.0, () => {
         this.triggerTimeout(2.0);
       });
+      this.notify();
     } else if (this.mode === 'TRANSFORMED') {
       // Evolving to Ultimate lasts 4 seconds
       this.toggleUltimate();
@@ -127,18 +127,18 @@ export class UltimatrixState {
       // Ultimate form lasts 4 seconds
       this.mode = 'ULTIMATE_MODE';
       this.isUltimate = true;
-      this.notify();
       this.startTimer(4.0, () => {
         this.triggerTimeout(2.0);
       });
+      this.notify();
     } else if (this.mode === 'ULTIMATE_MODE') {
       // Revert to normal transformed (resets normal 6s timer)
       this.mode = 'TRANSFORMED';
       this.isUltimate = false;
-      this.notify();
       this.startTimer(6.0, () => {
         this.triggerTimeout(2.0);
       });
+      this.notify();
     }
   }
 
@@ -158,7 +158,6 @@ export class UltimatrixState {
     this.clearTimer();
     this.mode = 'COOLDOWN';
     this.isUltimate = false;
-    this.notify();
 
     // Red Cooldown lasts 2 seconds, then automatically returns to green STANDBY
     this.startTimer(cooldownSeconds, () => {
@@ -169,6 +168,7 @@ export class UltimatrixState {
       this.cooldownPercent = 0;
       this.notify();
     });
+    this.notify();
   }
 
   public toggleAudio(): boolean {
