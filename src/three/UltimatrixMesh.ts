@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import { createUltimatrixMaterials, type UltimatrixMaterials } from './materials';
 import { HologramDisplay } from './HologramDisplay';
+import { AlienSilhouetteTexture } from './AlienSilhouetteTexture';
 
 export class UltimatrixMesh {
   public group: THREE.Group;
   public materials: UltimatrixMaterials;
   public hologram: HologramDisplay;
+  public silhouetteTexture: AlienSilhouetteTexture;
 
   // Movable / animatable parts
   public coreGroup: THREE.Group;
   public dialRing!: THREE.Group;
+  public hourglassGroup!: THREE.Group;
+  public dialDisplayMesh!: THREE.Mesh;
   public spikes: THREE.Mesh[] = [];
   public corePointLight: THREE.PointLight;
 
@@ -25,6 +29,7 @@ export class UltimatrixMesh {
     this.group = new THREE.Group();
     this.materials = createUltimatrixMaterials();
     this.hologram = new HologramDisplay(this.materials);
+    this.silhouetteTexture = new AlienSilhouetteTexture();
 
     // 1. Forearm Gauntlet Body
     this.buildGauntletBody();
@@ -137,8 +142,26 @@ export class UltimatrixMesh {
     faceMesh.position.set(0, 0.22, 0);
     this.dialRing.add(faceMesh);
 
-    // Hourglass / Interlocked Triangles Emblem
-    this.buildHourglassEmblem(this.dialRing);
+    // Dial Display Screen Mesh (shows alien silhouette / dynamic dial face)
+    const displayGeo = new THREE.CircleGeometry(0.96, 48);
+    displayGeo.rotateX(-Math.PI / 2);
+    const displayMat = new THREE.MeshStandardMaterial({
+      map: this.silhouetteTexture.texture,
+      emissiveMap: this.silhouetteTexture.texture,
+      emissive: 0xffffff,
+      emissiveIntensity: 1.2,
+      roughness: 0.1,
+      metalness: 0.1,
+      transparent: true
+    });
+    this.dialDisplayMesh = new THREE.Mesh(displayGeo, displayMat);
+    this.dialDisplayMesh.position.set(0, 0.265, 0);
+    this.dialRing.add(this.dialDisplayMesh);
+
+    // Hourglass / Interlocked Triangles 3D Emblem Group
+    this.hourglassGroup = new THREE.Group();
+    this.dialRing.add(this.hourglassGroup);
+    this.buildHourglassEmblem(this.hourglassGroup);
   }
 
   private buildHourglassEmblem(parent: THREE.Group): void {
@@ -233,8 +256,12 @@ export class UltimatrixMesh {
     this.targetSpikeExtension = target; // 0 = retracted, 1 = extended
   }
 
-  public setModeVisuals(mode: string, isUltimate: boolean): void {
+  public setModeVisuals(mode: string, isUltimate: boolean, alienIndex: number = 0): void {
+    // Update dynamic dial face canvas texture
+    this.silhouetteTexture.render(mode, alienIndex, isUltimate);
+
     if (mode === 'COOLDOWN') {
+      this.hourglassGroup.visible = true;
       this.materials.hourglassSymbol.color.setHex(0xff2200);
       this.materials.hourglassSymbol.emissive.setHex(0xff2200);
       this.materials.circuitLine.emissive.setHex(0xff2200);
@@ -243,6 +270,7 @@ export class UltimatrixMesh {
       this.setSpikeTarget(0);
       this.hologram.setVisible(false);
     } else if (isUltimate || mode === 'ULTIMATE_MODE') {
+      this.hourglassGroup.visible = false; // Show ultimate alien silhouette on dial
       this.materials.hourglassSymbol.color.setHex(0xff1122);
       this.materials.hourglassSymbol.emissive.setHex(0xff1122);
       this.materials.circuitLine.emissive.setHex(0xff4400);
@@ -252,8 +280,8 @@ export class UltimatrixMesh {
       this.hologram.setColor(0xff2233);
       this.hologram.setVisible(true);
     } else if (mode === 'ACTIVE_SELECTION') {
-      this.materials.hourglassSymbol.color.setHex(0x00ff66);
-      this.materials.hourglassSymbol.emissive.setHex(0x00ff66);
+      // IN ACTIVE SELECTION: Hide 3D hourglass so the alien silhouette shines through the dial!
+      this.hourglassGroup.visible = false;
       this.materials.circuitLine.emissive.setHex(0x00ff66);
       this.corePointLight.color.setHex(0x00ff66);
       this.setElevationTarget(1);
@@ -261,6 +289,7 @@ export class UltimatrixMesh {
       this.hologram.setColor(0x00ff88);
       this.hologram.setVisible(true);
     } else if (mode === 'TRANSFORMED') {
+      this.hourglassGroup.visible = true;
       this.materials.hourglassSymbol.color.setHex(0x00ff66);
       this.materials.hourglassSymbol.emissive.setHex(0x00ff66);
       this.corePointLight.color.setHex(0x00ff66);
@@ -269,6 +298,7 @@ export class UltimatrixMesh {
       this.hologram.setVisible(false);
     } else {
       // STANDBY
+      this.hourglassGroup.visible = true;
       this.materials.hourglassSymbol.color.setHex(0x00ff66);
       this.materials.hourglassSymbol.emissive.setHex(0x00ff66);
       this.materials.circuitLine.emissive.setHex(0x00ff66);

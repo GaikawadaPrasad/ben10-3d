@@ -24,7 +24,7 @@ export class SceneManager {
   private mouse: THREE.Vector2;
 
   private shakeIntensity: number = 0;
-  private cameraBasePosition: THREE.Vector3;
+  private targetCameraPos: THREE.Vector3;
 
   constructor(canvas: HTMLCanvasElement, state: UltimatrixState, soundEngine: SoundEngine) {
     this.canvas = canvas;
@@ -39,11 +39,11 @@ export class SceneManager {
     this.scene.background = new THREE.Color(0x040806);
     this.scene.fog = new THREE.FogExp2(0x040806, 0.045);
 
-    // 2. Camera
+    // 2. Camera: Heroic perspective focused on the Ultimatrix
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
-    this.camera.position.set(3.8, 3.2, 4.2);
-    this.cameraBasePosition = this.camera.position.clone();
+    this.camera.position.set(2.8, 3.4, 3.8);
+    this.targetCameraPos = this.camera.position.clone();
 
     // 3. Renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -54,16 +54,16 @@ export class SceneManager {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.15;
 
     // 4. Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.minDistance = 2.5;
-    this.controls.maxDistance = 12.0;
-    this.controls.maxPolarAngle = Math.PI / 2 + 0.15; // don't go too far below floor
-    this.controls.target.set(0, 0.4, 0);
+    this.controls.minDistance = 2.0;
+    this.controls.maxDistance = 9.0;
+    this.controls.maxPolarAngle = Math.PI / 2 + 0.1;
+    this.controls.target.set(0, 0.35, 0);
 
     // 5. Lighting
     this.setupLighting();
@@ -72,7 +72,7 @@ export class SceneManager {
     const renderScene = new RenderPass(this.scene, this.camera);
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.85, // strength
+      0.95, // strength
       0.4,  // radius
       0.65  // threshold
     );
@@ -91,6 +91,7 @@ export class SceneManager {
     // 9. Event Listeners
     window.addEventListener('resize', this.onWindowResize.bind(this));
     this.canvas.addEventListener('pointerdown', this.onCanvasPointerDown.bind(this));
+    window.addEventListener('wheel', this.onWindowWheel.bind(this), { passive: false });
 
     // 10. Subscribe to State changes
     this.state.subscribe(this.onStateChange.bind(this));
@@ -101,16 +102,16 @@ export class SceneManager {
 
   private setupLighting(): void {
     // Ambient light
-    const ambientLight = new THREE.AmbientLight(0x1a2e22, 1.2);
+    const ambientLight = new THREE.AmbientLight(0x1a2e22, 1.4);
     this.scene.add(ambientLight);
 
     // Key Light (warm metallic highlight)
-    const keyLight = new THREE.DirectionalLight(0xe8f0f8, 2.5);
+    const keyLight = new THREE.DirectionalLight(0xe8f0f8, 2.6);
     keyLight.position.set(5, 8, 6);
     this.scene.add(keyLight);
 
     // Fill Light (emerald Galvan tint)
-    const fillLight = new THREE.DirectionalLight(0x00ff88, 1.2);
+    const fillLight = new THREE.DirectionalLight(0x00ff88, 1.5);
     fillLight.position.set(-6, 3, -4);
     this.scene.add(fillLight);
 
@@ -121,12 +122,10 @@ export class SceneManager {
   }
 
   private buildPedestal(): void {
-    // Sci-fi Galvan holographic platform ring under the gauntlet
     const gridHelper = new THREE.GridHelper(16, 32, 0x00ff66, 0x0c2417);
     gridHelper.position.y = -1.6;
     this.scene.add(gridHelper);
 
-    // Inner glowing pedestal ring
     const ringGeo = new THREE.RingGeometry(2.4, 2.55, 64);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({
@@ -152,8 +151,27 @@ export class SceneManager {
     this.composer.setSize(width, height);
   }
 
+  // Mouse wheel rotates the Ultimatrix dial and changes alien!
+  private onWindowWheel(event: WheelEvent): void {
+    const currentMode = this.state.getSnapshot().mode;
+    if (currentMode === 'ACTIVE_SELECTION') {
+      event.preventDefault(); // Take over scroll wheel exclusively for dial rotation
+      if (event.deltaY > 0) {
+        this.soundEngine.playDialTurn();
+        this.state.nextAlien();
+      } else if (event.deltaY < 0) {
+        this.soundEngine.playDialTurn();
+        this.state.prevAlien();
+      }
+    } else if (currentMode === 'STANDBY') {
+      // If user scrolls in standby, automatically pop up the watch into selection!
+      event.preventDefault();
+      this.soundEngine.playPopUp();
+      this.state.toggleActivation();
+    }
+  }
+
   private onCanvasPointerDown(event: PointerEvent): void {
-    // Only react to primary mouse button
     if (event.button !== 0) return;
 
     const rect = this.canvas.getBoundingClientRect();
@@ -164,23 +182,24 @@ export class SceneManager {
     const intersects = this.raycaster.intersectObjects(this.ultimatrix.group.children, true);
 
     if (intersects.length > 0) {
-      // User clicked on the 3D Ultimatrix!
+      // User clicked directly on the 3D Ultimatrix watch!
       const currentMode = this.state.getSnapshot().mode;
       if (currentMode === 'STANDBY') {
         this.soundEngine.playPopUp();
         this.state.toggleActivation();
       } else if (currentMode === 'ACTIVE_SELECTION') {
         this.soundEngine.playSlam();
-        this.triggerCameraShake(0.25);
+        this.soundEngine.playTransform();
+        this.triggerCameraShake(0.5);
         this.state.slamDial();
       } else if (currentMode === 'TRANSFORMED') {
         // Slam again to evolve to Ultimate
         this.soundEngine.playUltimateEvolve();
-        this.triggerCameraShake(0.45);
+        this.triggerCameraShake(0.65);
         this.state.toggleUltimate();
       } else if (currentMode === 'ULTIMATE_MODE') {
         this.soundEngine.playSlam();
-        this.triggerCameraShake(0.2);
+        this.triggerCameraShake(0.25);
         this.state.detransform();
       }
     }
@@ -191,23 +210,30 @@ export class SceneManager {
   }
 
   private onStateChange(snapshot: ReturnType<UltimatrixState['getSnapshot']>): void {
-    // Update mesh visuals
-    this.ultimatrix.setModeVisuals(snapshot.mode, snapshot.isUltimate);
+    // Update mesh visuals with alien index so dial face renders the alien silhouette!
+    this.ultimatrix.setModeVisuals(snapshot.mode, snapshot.isUltimate, snapshot.selectedAlienIndex);
 
     // Update hologram alien display
     this.ultimatrix.hologram.setAlien(snapshot.selectedAlienIndex, snapshot.isUltimate);
 
-    // Rotate dial according to alien index
+    // Rotate dial smoothly
     const alienAngle = (snapshot.selectedAlienIndex / 6) * Math.PI * 2;
     this.ultimatrix.setRotationTarget(alienAngle);
 
     // Bloom intensity adjust
     if (snapshot.isUltimate) {
-      this.bloomPass.strength = 1.35;
+      this.bloomPass.strength = 1.45;
     } else if (snapshot.mode === 'ACTIVE_SELECTION') {
-      this.bloomPass.strength = 1.05;
+      this.bloomPass.strength = 1.15;
     } else {
-      this.bloomPass.strength = 0.75;
+      this.bloomPass.strength = 0.85;
+    }
+
+    // Camera framing focus
+    if (snapshot.mode === 'ACTIVE_SELECTION') {
+      this.targetCameraPos.set(2.2, 2.9, 3.0);
+    } else if (snapshot.mode === 'TRANSFORMED' || snapshot.mode === 'ULTIMATE_MODE') {
+      this.targetCameraPos.set(2.8, 3.4, 3.8);
     }
   }
 
@@ -219,24 +245,24 @@ export class SceneManager {
     // 1. Update 3D mesh components and animations
     this.ultimatrix.update(delta);
 
-    // 2. Camera shake decay
+    // 2. Camera smooth framing interpolation
+    this.camera.position.lerp(this.targetCameraPos, Math.min(1, delta * 3.0));
+
+    // 3. Camera shake decay
     if (this.shakeIntensity > 0) {
-      this.camera.position.x = this.cameraBasePosition.x + (Math.random() - 0.5) * this.shakeIntensity;
-      this.camera.position.y = this.cameraBasePosition.y + (Math.random() - 0.5) * this.shakeIntensity;
-      this.camera.position.z = this.cameraBasePosition.z + (Math.random() - 0.5) * this.shakeIntensity;
-      this.shakeIntensity -= delta * 0.9;
+      this.camera.position.x += (Math.random() - 0.5) * this.shakeIntensity;
+      this.camera.position.y += (Math.random() - 0.5) * this.shakeIntensity;
+      this.camera.position.z += (Math.random() - 0.5) * this.shakeIntensity;
+      this.shakeIntensity -= delta * 1.2;
       if (this.shakeIntensity < 0) {
         this.shakeIntensity = 0;
-        this.camera.position.copy(this.cameraBasePosition);
       }
-    } else {
-      this.cameraBasePosition.copy(this.camera.position);
     }
 
-    // 3. Orbit controls
+    // 4. Orbit controls
     this.controls.update();
 
-    // 4. Render with post-processing bloom
+    // 5. Render with post-processing bloom
     this.composer.render();
   };
 }
